@@ -10,5 +10,5 @@
 
 ### Clone the repository
 ```bash
-git clone https://github.com/yourusername/fsktm-course-system.git
+git clone https://github.com/ThunderJack1118/fsktm-course-system.git
 cd fsktm-course-system
