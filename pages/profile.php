@@ -9,10 +9,17 @@ if (!isLoggedIn()) {
 $db = new Database();
 $conn = $db->getConnection();
 
+$requested_user_id = isset($_GET['id']) ? (int)$_GET['id'] : $_SESSION['user_id'];
+
+// Permission check
+if ($requested_user_id !== $_SESSION['user_id'] && !isAdmin()) {
+    $_SESSION['error'] = "You don't have permission to view this profile";
+    redirect('/pages/dashboard.php');
+}
 // Get user details
 $user = [];
 $stmt = $conn->prepare("SELECT * FROM users WHERE user_id = ?");
-$stmt->bind_param("i", $_SESSION['user_id']);
+$stmt->bind_param("i", $requested_user_id);
 $stmt->execute();
 $result = $stmt->get_result();
 
@@ -20,7 +27,7 @@ if ($result->num_rows === 1) {
     $user = $result->fetch_assoc();
 } else {
     $_SESSION['error'] = "User not found";
-    redirect('/pages/auth/logout.php');
+    redirect(isAdmin() ? '/pages/admin/manage-users.php' : '/pages/dashboard.php');
 }
 $stmt->close();
 

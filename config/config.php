@@ -3,7 +3,7 @@ session_start();
 require_once 'database.php';
 
 // Base URL configuration
-define('BASE_URL', 'http://localhost/fsktm-course-system');
+define('BASE_URL', 'https://localhost/fsktm-course-system');
 define('ENVIRONMENT', 'development');
 
 // User roles

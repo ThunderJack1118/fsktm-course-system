@@ -1,7 +1,7 @@
 <?php
-require_once '../../config/config.php';
-require_once '../../includes/functions.php';
-
+require_once __DIR__ . '/../../config/config.php';
+require_once __DIR__ . '/../../includes/functions.php';
+require_once __DIR__ . '/../../api/user-api.php';
 
 if (!isLoggedIn() || !isAdmin()) {
     redirect('/pages/auth/login.php');
@@ -10,71 +10,44 @@ if (!isLoggedIn() || !isAdmin()) {
 $db = new Database();
 $conn = $db->getConnection();
 
-// Handle user deletion
-if (isset($_GET['delete']) && is_numeric($_GET['delete'])) {
-    $user_id = (int)$_GET['delete'];
+// Handle all CRUD operations
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    $action = $_POST['action'] ?? '';
     
-    // Check if user is trying to delete themselves
-    if ($user_id === $_SESSION['user_id']) {
-        $_SESSION['error'] = "You cannot delete your own account";
-    } else {
-        // Check if user has any courses as instructor
-        $stmt = $conn->prepare("SELECT COUNT(*) as count FROM courses WHERE instructor_id = ?");
-        $stmt->bind_param("i", $user_id);
-        $stmt->execute();
-        $result = $stmt->get_result()->fetch_assoc();
-        $stmt->close();
-        
-        if ($result['count'] > 0) {
-            $_SESSION['error'] = "Cannot delete user who is assigned as instructor to courses";
-        } else {
-            // Delete user
-            $stmt = $conn->prepare("DELETE FROM users WHERE user_id = ?");
-            $stmt->bind_param("i", $user_id);
-            
-            if ($stmt->execute()) {
-                $_SESSION['success'] = "User deleted successfully";
-            } else {
-                $_SESSION['error'] = "Failed to delete user";
-            }
-            
-            $stmt->close();
+    try {
+        switch ($action) {
+            case 'add':
+                $result = handleAddUser($conn);
+                $_SESSION['success'] = $result['message'];
+                break;
+            case 'update':
+                $result = handleUpdateUser($conn);
+                $_SESSION['success'] = $result['message'];
+                break;
+            default:
+                throw new Exception('Invalid action');
         }
+    } catch (Exception $e) {
+        $_SESSION['error'] = $e->getMessage();
     }
-    
-    redirect('/pages/admin/manage-users.php');
 }
 
-// Handle user status change
-if (isset($_GET['toggle_status']) && is_numeric($_GET['toggle_status'])) {
-    $user_id = (int)$_GET['toggle_status'];
-    
-    // Check if user is trying to deactivate themselves
-    if ($user_id === $_SESSION['user_id']) {
-        $_SESSION['error'] = "You cannot deactivate your own account";
-    } else {
-        $stmt = $conn->prepare("UPDATE users SET is_active = NOT is_active WHERE user_id = ?");
-        $stmt->bind_param("i", $user_id);
-        
-        if ($stmt->execute()) {
-            $_SESSION['success'] = "User status updated successfully";
-        } else {
-            $_SESSION['error'] = "Failed to update user status";
-        }
-        
-        $stmt->close();
-    }
-    
-    redirect('/pages/admin/manage-users.php');
+if (isset($_GET['toggle_status'])) {
+    $userId = (int)$_GET['toggle_status'];
+    toggleUserStatus($conn, $userId);
 }
 
-// Get all users
-$query = "SELECT user_id, username, email, first_name, last_name, user_type, is_active, 
-                 student_id, staff_id, created_at 
-          FROM users 
-          ORDER BY user_type, first_name, last_name";
+if (isset($_GET['delete'])) {
+    $userId = (int)$_GET['delete'];
+    deleteUser($conn, $userId);
+}
 
-$users = $conn->query($query)->fetch_all(MYSQLI_ASSOC);
+// Get all users for display
+$users = $conn->query("
+    SELECT user_id, username, email, first_name, last_name, user_type, 
+           student_id, staff_id, is_active, created_at, phone, address, department
+    FROM users ORDER BY user_type, first_name, last_name
+")->fetch_all(MYSQLI_ASSOC);
 
 $db->closeConnection();
 
@@ -85,371 +58,469 @@ include '../../includes/header.php';
 <div class="admin-container">
     <h1>Manage Users</h1>
     
-    <?php if (isset($_SESSION['success'])): ?>
-        <div class="alert alert-success"><?php echo $_SESSION['success']; unset($_SESSION['success']); ?></div>
-    <?php endif; ?>
+    <?php showAlertMessages(); ?>
     
-    <?php if (isset($_SESSION['error'])): ?>
-        <div class="alert alert-error"><?php echo $_SESSION['error']; unset($_SESSION['error']); ?></div>
-    <?php endif; ?>
-    
-    <div class="admin-actions">
-        <a href="#add-user-modal" class="btn btn-primary" data-modal-open>Add New User</a>
+    <div class="mb-3">
+        <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#userModal" data-action="add">
+            <i class="fas fa-user-plus"></i> Add New User
+        </button>
     </div>
     
-    <div class="admin-table-container">
-        <table class="admin-table">
-            <thead>
-                <tr>
-                    <th>Name</th>
-                    <th>Username</th>
-                    <th>Email</th>
-                    <th>Type</th>
-                    <th>Student/Staff ID</th>
-                    <th>Joined</th>
-                    <th>Status</th>
-                    <th>Actions</th>
-                </tr>
-            </thead>
-            <tbody>
-                <?php foreach ($users as $user): ?>
-                    <tr>
-                        <td><?php echo $user['first_name'] . ' ' . $user['last_name']; ?></td>
-                        <td><?php echo $user['username']; ?></td>
-                        <td><?php echo $user['email']; ?></td>
-                        <td><?php echo ucfirst($user['user_type']); ?></td>
-                        <td>
-                            <?php if (!empty($user['student_id'])): ?>
-                                <?php echo $user['student_id']; ?>
-                            <?php elseif (!empty($user['staff_id'])): ?>
-                                <?php echo $user['staff_id']; ?>
-                            <?php else: ?>
-                                -
-                            <?php endif; ?>
-                        </td>
-                        <td><?php echo date('M j, Y', strtotime($user['created_at'])); ?></td>
-                        <td>
-                            <span class="status-badge <?php echo $user['is_active'] ? 'active' : 'inactive'; ?>">
-                                <?php echo $user['is_active'] ? 'Active' : 'Inactive'; ?>
-                            </span>
-                        </td>
-                        <td class="actions">
-                            <a href="<?php echo BASE_URL; ?>/pages/profile.php?id=<?php echo $user['user_id']; ?>" class="btn btn-small btn-secondary" title="View">
-                                <i class="fas fa-eye"></i>
-                            </a>
-                            <a href="#edit-user-modal" class="btn btn-small btn-primary" title="Edit" 
-                               data-modal-open 
-                               data-user-id="<?php echo $user['user_id']; ?>"
-                               data-username="<?php echo htmlspecialchars($user['username']); ?>"
-                               data-email="<?php echo htmlspecialchars($user['email']); ?>"
-                               data-first-name="<?php echo htmlspecialchars($user['first_name']); ?>"
-                               data-last-name="<?php echo htmlspecialchars($user['last_name']); ?>"
-                               data-user-type="<?php echo $user['user_type']; ?>"
-                               data-student-id="<?php echo htmlspecialchars($user['student_id'] ?? ''); ?>"
-                               data-staff-id="<?php echo htmlspecialchars($user['staff_id'] ?? ''); ?>"
-                               data-is-active="<?php echo $user['is_active']; ?>">
-                                <i class="fas fa-edit"></i>
-                            </a>
-                            <a href="<?php echo BASE_URL; ?>/pages/admin/manage-users.php?toggle_status=<?php echo $user['user_id']; ?>" class="btn btn-small btn-warning" title="<?php echo $user['is_active'] ? 'Deactivate' : 'Activate'; ?>">
-                                <i class="fas <?php echo $user['is_active'] ? 'fa-ban' : 'fa-check'; ?>"></i>
-                            </a>
-                            <a href="<?php echo BASE_URL; ?>/pages/admin/manage-users.php?delete=<?php echo $user['user_id']; ?>" class="btn btn-small btn-danger" title="Delete" onclick="return confirm('Are you sure you want to delete this user?')">
-                                <i class="fas fa-trash"></i>
-                            </a>
-                        </td>
-                    </tr>
-                <?php endforeach; ?>
-            </tbody>
-        </table>
+    <div class="card">
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-striped table-hover" id="usersTable">
+                    <thead>
+                        <tr>
+                            <th>Name</th>
+                            <th>Username</th>
+                            <th>Email</th>
+                            <th>Type</th>
+                            <th>ID</th>
+                            <th>Phone</th>
+                            <th>Department</th>
+                            <th>Status</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <?php foreach ($users as $user): ?>
+                            <tr>
+                                <td>
+                                    <a href="profile.php?id=<?= $user['user_id'] ?>" class="text-primary">
+                                        <?= htmlspecialchars($user['first_name'] . ' ' . $user['last_name']) ?>
+                                    </a>
+                                </td>
+                                <td><?= htmlspecialchars($user['username']) ?></td>
+                                <td><?= htmlspecialchars($user['email']) ?></td>
+                                <td><?= ucfirst($user['user_type']) ?></td>
+                                <td><?= htmlspecialchars($user['student_id'] ?? $user['staff_id'] ?? '-') ?></td>
+                                <td><?= htmlspecialchars($user['phone'] ?? '-') ?></td>
+                                <td><?= htmlspecialchars($user['department'] ?? '-') ?></td>
+                                <td>
+                                    <span class="badge bg-<?= $user['is_active'] ? 'success' : 'danger' ?>">
+                                        <?= $user['is_active'] ? 'Active' : 'Inactive' ?>
+                                    </span>
+                                </td>
+                                <td>
+                                    <div class="btn-group">
+                                        <a href="../profile.php?id=<?= $user['user_id'] ?>" class="btn btn-sm btn-info" 
+                                        title="View Profile" data-bs-toggle="tooltip">
+                                            <i class="fas fa-eye"></i>
+                                        </a>
+                                        <button class="btn btn-sm btn-warning edit-user" 
+                                            data-bs-toggle="modal" data-bs-target="#userModal"
+                                            data-user-id="<?= $user['user_id'] ?>"
+                                            data-user-data='<?= htmlspecialchars(json_encode($user), ENT_QUOTES, 'UTF-8') ?>'
+                                            data-action="edit"
+                                            title="Edit">
+                                            <i class="fas fa-edit"></i>
+                                        </button>
+                                        <a href="?toggle_status=<?= $user['user_id'] ?>" class="btn btn-sm btn-<?= $user['is_active'] ? 'secondary' : 'success' ?>"
+                                            title="<?= $user['is_active'] ? 'Deactivate' : 'Activate' ?>">
+                                            <i class="fas <?= $user['is_active'] ? 'fa-ban' : 'fa-check' ?>"></i>
+                                        </a>
+                                        <a href="?delete=<?= $user['user_id'] ?>" class="btn btn-sm btn-danger"
+                                            onclick="return confirm('Are you sure? This cannot be undone.')"
+                                            title="Delete">
+                                            <i class="fas fa-trash"></i>
+                                        </a>
+                                    </div>
+                                </td>
+                            </tr>
+                        <?php endforeach; ?>
+                    </tbody>
+                </table>
+            </div>
+        </div>
     </div>
 </div>
 
-<!-- Add User Modal -->
-<div id="add-user-modal" class="modal">
-    <div class="modal-content">
-        <div class="modal-header">
-            <h2>Add New User</h2>
-            <button class="modal-close">&times;</button>
-        </div>
-        <div class="modal-body">
-            <form id="add-user-form" action="<?php echo BASE_URL; ?>/api/user-api.php" method="post">
-                <input type="hidden" name="action" value="add">
-                
-                <div class="form-row">
-                    <div class="form-group">
-                        <label for="first_name">First Name</label>
-                        <input type="text" id="first_name" name="first_name" required>
-                    </div>
-                    
-                    <div class="form-group">
-                        <label for="last_name">Last Name</label>
-                        <input type="text" id="last_name" name="last_name" required>
+<!-- Unified User Modal -->
+<div class="modal fade" id="userModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><span id="modalTitle">Add</span> User</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form id="userForm" action="<?= htmlspecialchars($_SERVER['PHP_SELF']) ?>" method="post">
+                <input type="hidden" name="action" id="formAction" value="add">
+                <input type="hidden" name="user_id" id="user_id">
+                <div class="modal-body">
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label for="first_name" class="form-label">First Name*</label>
+                            <input type="text" class="form-control" id="first_name" name="first_name" required
+                                   pattern="[A-Za-z\s]{2,}" title="Only letters and spaces, minimum 2 characters">
+                        </div>
+                        <div class="col-md-6">
+                            <label for="last_name" class="form-label">Last Name*</label>
+                            <input type="text" class="form-control" id="last_name" name="last_name" required
+                                   pattern="[A-Za-z\s]{2,}" title="Only letters and spaces, minimum 2 characters">
+                        </div>
+                        <div class="col-md-6">
+                            <label for="user_type" class="form-label">User Type*</label>
+                            <select class="form-select" id="user_type" name="user_type" required>
+                                <option value="">Select Type</option>
+                                <option value="student">Student</option>
+                                <option value="lecturer">Lecturer</option>
+                                <option value="admin">Admin</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="username" class="form-label">Username*</label>
+                            <input type="text" class="form-control" id="username" name="username" required
+                                   pattern="[A-Za-z0-9_]{4,}" title="Letters, numbers, underscores only (4+ chars)">
+                        </div>
+                        <div class="col-md-6">
+                            <label for="email" class="form-label">Email*</label>
+                            <input type="email" class="form-control" id="email" name="email" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="phone" class="form-label">Phone</label>
+                            <input type="tel" class="form-control" id="phone" name="phone"
+                                   pattern="[\d\-]{10,15}" title="10-15 digit phone number">
+                        </div>
+                        <div class="col-md-6">
+                            <label for="department" class="form-label">Department</label>
+                            <select class="form-select" id="department" name="department">
+                                <option value="">Select Department</option>
+                                <option value="Administrator">Administrator</option>
+                                <option value="Software Engineering">Software Engineering</option>
+                                <option value="Information Technology">Information Technology</option>
+                                <option value="Information Security">Information Security</option>
+                                <option value="Web Technology">Web Technology</option>
+                                <option value="Multimedia Computing">Multimedia Computing</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="address" class="form-label">Address</label>
+                            <textarea class="form-control" id="address" name="address" rows="1"></textarea>
+                        </div>
+                        <div class="col-12">
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="is_active" name="is_active" checked>
+                                <label class="form-check-label" for="is_active">Active Account</label>
+                            </div>
+                        </div>
                     </div>
                 </div>
-                
-                <div class="form-group">
-                    <label for="username">Username</label>
-                    <input type="text" id="username" name="username" required>
-                </div>
-                
-                <div class="form-group">
-                    <label for="email">Email</label>
-                    <input type="email" id="email" name="email" required>
-                </div>
-                
-                <div class="form-row">
-                    <div class="form-group">
-                        <label for="password">Password</label>
-                        <input type="password" id="password" name="password" required>
-                    </div>
-                    
-                    <div class="form-group">
-                        <label for="confirm_password">Confirm Password</label>
-                        <input type="password" id="confirm_password" name="confirm_password" required>
-                    </div>
-                </div>
-                
-                <div class="form-row">
-                    <div class="form-group">
-                        <label for="user_type">User Type</label>
-                        <select id="user_type" name="user_type" required>
-                            <option value="student">Student</option>
-                            <option value="lecturer">Lecturer</option>
-                            <option value="admin">Admin</option>
-                        </select>
-                    </div>
-                    
-                    <div class="form-group" id="student-id-group">
-                        <label for="student_id">Student ID</label>
-                        <input type="text" id="student_id" name="student_id">
-                    </div>
-                    
-                    <div class="form-group" id="staff-id-group" style="display: none;">
-                        <label for="staff_id">Staff ID</label>
-                        <input type="text" id="staff_id" name="staff_id">
-                    </div>
-                </div>
-                
-                <div class="form-group">
-                    <label>
-                        <input type="checkbox" name="is_active" checked>
-                        Active Account
-                    </label>
-                </div>
-                
-                <div class="form-actions">
-                    <button type="button" class="btn btn-secondary modal-close">Cancel</button>
-                    <button type="submit" class="btn btn-primary">Add User</button>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Save</button>
                 </div>
             </form>
         </div>
     </div>
 </div>
 
-<!-- Edit User Modal -->
-<div id="edit-user-modal" class="modal">
-    <div class="modal-content">
-        <div class="modal-header">
-            <h2>Edit User</h2>
-            <button class="modal-close">&times;</button>
-        </div>
-        <div class="modal-body">
-            <form id="edit-user-form" action="<?php echo BASE_URL; ?>/api/user-api.php" method="post">
-                <input type="hidden" name="action" value="update">
-                <input type="hidden" id="edit_user_id" name="user_id">
-                
-                <div class="form-row">
-                    <div class="form-group">
-                        <label for="edit_first_name">First Name</label>
-                        <input type="text" id="edit_first_name" name="first_name" required>
-                    </div>
-                    
-                    <div class="form-group">
-                        <label for="edit_last_name">Last Name</label>
-                        <input type="text" id="edit_last_name" name="last_name" required>
-                    </div>
-                </div>
-                
-                <div class="form-group">
-                    <label for="edit_username">Username</label>
-                    <input type="text" id="edit_username" name="username" required>
-                </div>
-                
-                <div class="form-group">
-                    <label for="edit_email">Email</label>
-                    <input type="email" id="edit_email" name="email" required>
-                </div>
-                
-                <div class="form-row">
-                    <div class="form-group">
-                        <label for="edit_user_type">User Type</label>
-                        <select id="edit_user_type" name="user_type" required>
-                            <option value="student">Student</option>
-                            <option value="lecturer">Lecturer</option>
-                            <option value="admin">Admin</option>
-                        </select>
-                    </div>
-                    
-                    <div class="form-group" id="edit-student-id-group">
-                        <label for="edit_student_id">Student ID</label>
-                        <input type="text" id="edit_student_id" name="student_id">
-                    </div>
-                    
-                    <div class="form-group" id="edit-staff-id-group" style="display: none;">
-                        <label for="edit_staff_id">Staff ID</label>
-                        <input type="text" id="edit_staff_id" name="staff_id">
-                    </div>
-                </div>
-                
-                <div class="form-group">
-                    <label>
-                        <input type="checkbox" id="edit_is_active" name="is_active">
-                        Active Account
-                    </label>
-                </div>
-                
-                <div class="form-actions">
-                    <button type="button" class="btn btn-secondary modal-close">Cancel</button>
-                    <button type="submit" class="btn btn-primary">Update User</button>
-                </div>
-            </form>
-        </div>
-    </div>
-</div>
+<!-- jQuery -->
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<!-- DataTables CSS -->
+<link rel="stylesheet" href="https://cdn.datatables.net/1.13.7/css/jquery.dataTables.min.css">
+<!-- DataTables JS -->
+<script src="https://cdn.datatables.net/1.13.7/js/jquery.dataTables.min.js"></script>
+<!-- Bootstrap JS -->
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 
 <script>
-document.addEventListener('DOMContentLoaded', function() {
-    // Modal functionality
-    const modals = document.querySelectorAll('.modal');
-    const modalOpenButtons = document.querySelectorAll('[data-modal-open]');
-    const modalCloseButtons = document.querySelectorAll('.modal-close');
-    
-    modalOpenButtons.forEach(button => {
-        button.addEventListener('click', function() {
-            const modalId = this.getAttribute('href') || this.dataset.modalOpen;
-            const modal = document.querySelector(modalId);
-            
-            if (modal) {
-                modal.style.display = 'block';
-                
-                // If this is the edit modal, populate with data
-                if (modalId === '#edit-user-modal') {
-                    document.getElementById('edit_user_id').value = this.dataset.userId;
-                    document.getElementById('edit_username').value = this.dataset.username;
-                    document.getElementById('edit_email').value = this.dataset.email;
-                    document.getElementById('edit_first_name').value = this.dataset.firstName;
-                    document.getElementById('edit_last_name').value = this.dataset.lastName;
-                    document.getElementById('edit_user_type').value = this.dataset.userType;
-                    document.getElementById('edit_is_active').checked = this.dataset.isActive === '1';
-                    
-                    // Handle student/staff ID fields based on user type
-                    const userType = this.dataset.userType;
-                    const studentIdGroup = document.getElementById('edit-student-id-group');
-                    const staffIdGroup = document.getElementById('edit-staff-id-group');
-                    
-                    if (userType === 'student') {
-                        studentIdGroup.style.display = 'block';
-                        staffIdGroup.style.display = 'none';
-                        document.getElementById('edit_student_id').value = this.dataset.studentId;
-                    } else if (userType === 'lecturer' || userType === 'admin') {
-                        studentIdGroup.style.display = 'none';
-                        staffIdGroup.style.display = 'block';
-                        document.getElementById('edit_staff_id').value = this.dataset.staffId;
-                    }
-                }
-            }
-        });
+$(document).ready(function() {
+    // Initialize DataTable with sorting
+    $('#usersTable').DataTable({
+        responsive: true,
+        columnDefs: [
+            { orderable: true, targets: [0, 1, 2, 3, 4, 5, 6, 7] },
+            { orderable: false, targets: [8] } // Actions column
+        ],
+        order: [[0, 'asc']] // Default sort by Name
     });
-    
-    modalCloseButtons.forEach(button => {
-        button.addEventListener('click', function() {
-            const modal = this.closest('.modal');
-            if (modal) {
-                modal.style.display = 'none';
+
+    // Handle modal for both add and edit
+    $(document).on('click', '.edit-user', function() {
+        const button = $(this);
+        const action = button.data('action');
+        const userData = button.data('user-data');
+        const modal = $('#userModal');
+        
+        modal.find('#modalTitle').text(action === 'add' ? 'Add' : 'Edit');
+        modal.find('#formAction').val(action === 'add' ? 'add' : 'update');
+        
+        if (action === 'edit') {
+            try {
+                const user = typeof userData === 'string' ? JSON.parse(userData) : userData;
+                modal.find('#user_id').val(user.user_id);
+                modal.find('#first_name').val(user.first_name);
+                modal.find('#last_name').val(user.last_name);
+                modal.find('#username').val(user.username);
+                modal.find('#email').val(user.email);
+                modal.find('#user_type').val(user.user_type);
+                modal.find('#phone').val(user.phone || '');
+                modal.find('#department').val(user.department || '');
+                modal.find('#address').val(user.address || '');
+                modal.find('#is_active').prop('checked', user.is_active == 1);
+            } catch (e) {
+                console.error('Error parsing user data:', e);
+                alert('Error loading user data');
+                return;
             }
-        });
-    });
-    
-    window.addEventListener('click', function(e) {
-        if (e.target.classList.contains('modal')) {
-            e.target.style.display = 'none';
+        } else {
+            modal.find('form')[0].reset();
+            modal.find('#user_id').val('');
         }
     });
-    
-    // Show/hide student/staff ID fields based on user type in add form
-    const userTypeSelect = document.getElementById('user_type');
-    const studentIdGroup = document.getElementById('student-id-group');
-    const staffIdGroup = document.getElementById('staff-id-group');
-    
-    if (userTypeSelect) {
-        userTypeSelect.addEventListener('change', function() {
-            if (this.value === 'student') {
-                studentIdGroup.style.display = 'block';
-                staffIdGroup.style.display = 'none';
-            } else {
-                studentIdGroup.style.display = 'none';
-                staffIdGroup.style.display = 'block';
-            }
-        });
-    }
-    
-    // Show/hide student/staff ID fields based on user type in edit form
-    const editUserTypeSelect = document.getElementById('edit_user_type');
-    const editStudentIdGroup = document.getElementById('edit-student-id-group');
-    const editStaffIdGroup = document.getElementById('edit-staff-id-group');
-    
-    if (editUserTypeSelect) {
-        editUserTypeSelect.addEventListener('change', function() {
-            if (this.value === 'student') {
-                editStudentIdGroup.style.display = 'block';
-                editStaffIdGroup.style.display = 'none';
-            } else {
-                editStudentIdGroup.style.display = 'none';
-                editStaffIdGroup.style.display = 'block';
-            }
-        });
-    }
-    
-    // Form submission handling
-    const addUserForm = document.getElementById('add-user-form');
-    const editUserForm = document.getElementById('edit-user-form');
-    
-    if (addUserForm) {
-        addUserForm.addEventListener('submit', function(e) {
-            e.preventDefault();
-            submitUserForm(this, 'add');
-        });
-    }
-    
-    if (editUserForm) {
-        editUserForm.addEventListener('submit', function(e) {
-            e.preventDefault();
-            submitUserForm(this, 'update');
-        });
-    }
-    
-    function submitUserForm(form, action) {
-        const formData = new FormData(form);
+
+    // Form submission
+    $('#userForm').on('submit', function(e) {
+        e.preventDefault();
+        const form = $(this);
+        const submitBtn = form.find('button[type="submit"]');
+        const originalText = submitBtn.html();
         
-        fetch(form.action, {
-            method: 'POST',
-            body: formData
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                alert(data.message);
+        submitBtn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin"></i> Processing...');
+        
+        $.ajax({
+            url: form.attr('action'),
+            type: 'POST',
+            data: form.serialize(),
+            success: function() {
                 window.location.reload();
-            } else {
-                alert('Error: ' + data.message);
+            },
+            error: function(xhr) {
+                alert('Error: ' + xhr.responseText);
+                submitBtn.prop('disabled', false).html(originalText);
             }
-        })
-        .catch(error => {
-            console.error('Error:', error);
-            alert('An error occurred. Please try again.');
         });
-    }
+    });
 });
 </script>
 
-<?php include '../../includes/footer.php'; ?>
+<?php
+include '../../includes/footer.php';
+?>
+
+<style>
+/* Improved Table Styling */
+#usersTable {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 20px 0;
+    font-size: 0.9em;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    box-shadow: 0 0 20px rgba(0, 0, 0, 0.1);
+}
+
+#usersTable thead tr {
+    background-color: #343a40;
+    color: #ffffff;
+    text-align: left;
+}
+
+#usersTable th,
+#usersTable td {
+    padding: 12px 15px;
+    border-bottom: 1px solid #dddddd;
+    vertical-align: middle;
+}
+
+#usersTable tbody tr {
+    border-bottom: 1px solid #dddddd;
+}
+
+#usersTable tbody tr:nth-of-type(even) {
+    background-color: #f8f9fa;
+}
+
+#usersTable tbody tr:last-of-type {
+    border-bottom: 2px solid #343a40;
+}
+
+#usersTable tbody tr:hover {
+    background-color: #e9f7fe;
+}
+
+/* Button Group Styling */
+.btn-group {
+    display: flex;
+    flex-wrap: nowrap;
+    gap: 5px;
+}
+
+.btn-group .btn {
+    padding: 0.25rem 0.5rem;
+    font-size: 0.8rem;
+    border-radius: 4px;
+}
+
+/* Button Colors */
+.btn-info {
+    background-color: #17a2b8;
+    border-color: #17a2b8;
+    color: white;
+}
+
+.btn-info:hover {
+    background-color: #138496;
+    border-color: #117a8b;
+    color: white;
+}
+
+.btn-warning {
+    background-color: #ffc107;
+    border-color: #ffc107;
+    color: #212529;
+}
+
+.btn-warning:hover {
+    background-color: #e0a800;
+    border-color: #d39e00;
+    color: #212529;
+}
+
+.btn-secondary {
+    background-color: #6c757d;
+    border-color: #6c757d;
+    color: white;
+}
+
+.btn-secondary:hover {
+    background-color: #5a6268;
+    border-color: #545b62;
+    color: white;
+}
+
+.btn-success {
+    background-color: #28a745;
+    border-color: #28a745;
+    color: white;
+}
+
+.btn-success:hover {
+    background-color: #218838;
+    border-color: #1e7e34;
+    color: white;
+}
+
+.btn-danger {
+    background-color: #dc3545;
+    border-color: #dc3545;
+    color: white;
+}
+
+.btn-danger:hover {
+    background-color: #c82333;
+    border-color: #bd2130;
+    color: white;
+}
+
+/* Improved Modal Styling */
+.modal-content {
+    border-radius: 10px;
+    border: none;
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+}
+
+.modal-header {
+    background-color: #343a40;
+    color: white;
+    border-radius: 10px 10px 0 0;
+    padding: 15px 20px;
+}
+
+.modal-header .btn-close {
+    filter: invert(1);
+}
+
+.modal-body {
+    padding: 20px;
+}
+
+.modal-footer {
+    border-top: 1px solid #e9ecef;
+    padding: 15px 20px;
+}
+
+/* Form Styling */
+.form-label {
+    font-weight: 500;
+    margin-bottom: 5px;
+}
+
+.form-control, .form-select {
+    border-radius: 5px;
+    padding: 10px;
+    border: 1px solid #ced4da;
+    margin-bottom: 15px;
+}
+
+.form-control:focus, .form-select:focus {
+    border-color: #80bdff;
+    box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25);
+}
+
+/* Button Styling */
+.btn {
+    border-radius: 5px;
+    padding: 8px 15px;
+    font-weight: 500;
+    transition: all 0.3s;
+}
+
+.btn-primary {
+    background-color: #007bff;
+    border-color: #007bff;
+}
+
+.btn-primary:hover {
+    background-color: #0069d9;
+    border-color: #0062cc;
+}
+
+.btn-outline-danger:hover {
+    color: white;
+}
+
+/* Alert Styling */
+.alert {
+    border-radius: 5px;
+    padding: 10px 15px;
+    margin-bottom: 20px;
+}
+
+/* Badge Styling */
+.badge {
+    padding: 5px 10px;
+    font-size: 0.8em;
+    font-weight: 600;
+    border-radius: 4px;
+}
+
+.badge.bg-success {
+    background-color: #28a745 !important;
+}
+
+.badge.bg-danger {
+    background-color: #dc3545 !important;
+}
+
+/* Responsive Adjustments */
+@media (max-width: 768px) {
+    #usersTable {
+        display: block;
+        overflow-x: auto;
+    }
+    
+    .modal-dialog {
+        margin: 0.5rem auto;
+    }
+    
+    .btn-group {
+        flex-direction: column;
+    }
+    
+    .btn-group .btn {
+        width: 100%;
+        margin-bottom: 5px;
+    }
+}
+</style>

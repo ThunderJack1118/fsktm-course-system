@@ -261,4 +261,27 @@ function get_user_name($user_id) {
     
     return $result ? $result['full_name'] : 'Unknown';
 }
+
+function displaySessionMessages() {
+    if (isset($_SESSION['success'])) {
+        echo '<div class="alert alert-success">' . htmlspecialchars($_SESSION['success']) . '</div>';
+        unset($_SESSION['success']);
+    }
+    
+    if (isset($_SESSION['error'])) {
+        echo '<div class="alert alert-error">' . htmlspecialchars($_SESSION['error']) . '</div>';
+        unset($_SESSION['error']);
+    }
+    
+    if (isset($_SESSION['warning'])) {
+        echo '<div class="alert alert-warning">' . htmlspecialchars($_SESSION['warning']) . '</div>';
+        unset($_SESSION['warning']);
+    }
+    
+    if (isset($_SESSION['info'])) {
+        echo '<div class="alert alert-info">' . htmlspecialchars($_SESSION['info']) . '</div>';
+        unset($_SESSION['info']);
+    }
+}
+
 ?>
