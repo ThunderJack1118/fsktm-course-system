@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: 127.0.0.1
--- Generation Time: Jun 19, 2025 at 04:00 PM
+-- Generation Time: Jun 28, 2025 at 10:21 PM
 -- Server version: 10.4.32-MariaDB
 -- PHP Version: 8.2.12
 
@@ -146,7 +146,7 @@ INSERT INTO `courses` (`course_id`, `course_code`, `course_name`, `description`,
 (7, 'CSC401', 'Computer Networks', 'Network protocols and security', 3, '2', '2024/2025', 30, 2, 6, 'Tuesday', '15:00-17:00', 'Lab E1', 'default-course.jpg', NULL, 3, 1, '2025-06-16 06:26:40', '2025-06-16 17:35:56'),
 (8, 'CSC402', 'Data Science Fundamentals', 'Data analysis and visualization with Python', 3, '1', '2024/2025', 25, 1, 5, 'Wednesday', '10:00-12:00', 'Lab F1', 'default-course.jpg', 'CSC101', 7, 1, '2025-06-16 06:26:40', '2025-06-18 07:19:42'),
 (9, 'CSC501', 'Cybersecurity Essentials', 'Information security principles and practices', 3, '2', '2024/2025', 25, 1, 6, 'Thursday', '13:00-15:00', 'Lecture Hall 2', 'default-course.jpg', 'CSC401', 8, 1, '2025-06-16 06:26:40', '2025-06-16 06:26:40'),
-(10, 'CSC502', 'Advanced Web Development', 'Modern web frameworks and APIs', 3, '1', '2024/2025', 20, 0, 3, 'Friday', '09:00-11:00', 'Lab C2', 'default-course.jpg', 'CSC201', 5, 1, '2025-06-16 06:26:40', '2025-06-18 07:20:04');
+(10, 'CSC502', 'Advanced Web Development', 'Modern web frameworks and APIs', 3, '1', '2024/2025', 20, 2, 3, 'Friday', '09:00-11:00', 'Lab C2', 'default-course.jpg', 'CSC201', 5, 1, '2025-06-16 06:26:40', '2025-06-28 20:18:24');
 
 -- --------------------------------------------------------
 
@@ -243,7 +243,8 @@ INSERT INTO `registrations` (`registration_id`, `user_id`, `course_id`, `registr
 (17, 12, 5, '2024-01-15 03:30:00', 'approved', 'A-', 89.75, 85.25, NULL),
 (18, 12, 10, '2024-01-16 01:00:00', 'pending', NULL, 0.00, 0.00, NULL),
 (19, 7, 7, '2025-06-16 17:35:56', 'approved', 'A', 0.00, 0.00, NULL),
-(22, 7, 5, '2025-06-18 07:27:26', 'pending', NULL, 0.00, 0.00, NULL);
+(22, 7, 5, '2025-06-18 07:27:26', 'pending', NULL, 0.00, 0.00, NULL),
+(23, 7, 10, '2025-06-26 07:45:59', 'pending', NULL, 0.00, 0.00, NULL);
 
 -- --------------------------------------------------------
 
@@ -307,21 +308,20 @@ CREATE TABLE `users` (
 --
 
 INSERT INTO `users` (`user_id`, `username`, `email`, `password`, `first_name`, `last_name`, `user_type`, `profile_picture`, `phone`, `date_of_birth`, `student_id`, `staff_id`, `address`, `department`, `created_at`, `updated_at`, `is_active`, `last_login`) VALUES
-(1, 'admin', 'admin@fsktm.edu.my', '$2a$12$79SdsP1nbxQ5gbS2eptNW.Mb708OtSdiII3K9Vi2cLWdZHbD0tD0u', 'System', 'Administrator', 'admin', 'profile_1_1750089204.png', '03-89212345', '0000-00-00', NULL, 'ADM001', '', 'Administration', '2025-06-16 06:26:40', '2025-06-19 04:21:58', 1, '2025-06-19 04:21:58'),
-(2, 'dr_ahmad', 'ahmad@fsktm.edu.my', '$2a$12$OH8SHQ6HktwoEyrLrv51iuHETcQg2zEytgdtBN7EgeLMcDSZr4HDy', 'Ahmad', 'Hassan', 'lecturer', 'profile_2_1750092346.png', '03-89210001', '0000-00-00', NULL, 'LEC001', '', 'Computer Science', '2025-06-16 06:26:40', '2025-06-19 13:02:54', 1, '2025-06-19 13:02:54'),
-(3, 'dr_siti', 'siti@fsktm.edu.my', '$2a$12$OH8SHQ6HktwoEyrLrv51iuHETcQg2zEytgdtBN7EgeLMcDSZr4HDy', 'Siti', 'Nurhaliza', 'lecturer', 'default-avatar.png', '03-89210002', NULL, NULL, 'LEC002', NULL, 'Information Technology', '2025-06-16 06:26:40', '2025-06-16 16:32:42', 1, NULL),
-(4, 'prof_lee', 'lee@fsktm.edu.my', '$2a$12$OH8SHQ6HktwoEyrLrv51iuHETcQg2zEytgdtBN7EgeLMcDSZr4HDy', 'Lee', 'Wei Ming', 'lecturer', 'default-avatar.png', '03-89210003', NULL, NULL, 'LEC003', NULL, 'Software Engineering', '2025-06-16 06:26:40', '2025-06-16 16:32:42', 1, NULL),
-(5, 'dr_rajesh', 'rajesh@fsktm.edu.my', '$2a$12$OH8SHQ6HktwoEyrLrv51iuHETcQg2zEytgdtBN7EgeLMcDSZr4HDy', 'Rajesh', 'Kumar', 'lecturer', 'default-avatar.png', '03-89210004', NULL, NULL, 'LEC004', NULL, 'Artificial Intelligence', '2025-06-16 06:26:40', '2025-06-16 16:32:42', 1, NULL),
-(6, 'dr_fatimah', 'fatimah@fsktm.edu.my', '$2a$12$OH8SHQ6HktwoEyrLrv51iuHETcQg2zEytgdtBN7EgeLMcDSZr4HDy', 'Fatimah', 'Ali', 'lecturer', 'default-avatar.png', '03-89210005', NULL, NULL, 'LEC005', NULL, 'Network Security', '2025-06-16 06:26:40', '2025-06-19 06:54:37', 1, '2025-06-19 06:54:37'),
-(7, 'john_doe', 'john@student.fsktm.edu.my', '$2a$12$lB9OHQh8th5S/d.nvM.0GuIZwuKgXDywBZ8KH4PPA1f/zwfTJG7ES', 'John', 'Doe', 'student', 'profile_7_1750129467.jpg', '019-1234567', '2001-05-15', 'STU001', NULL, NULL, 'Computer Science', '2025-06-16 06:26:40', '2025-06-19 12:59:54', 1, '2025-06-19 12:59:54'),
-(8, 'jane_smith', 'jane@student.fsktm.edu.my', '$2a$12$lB9OHQh8th5S/d.nvM.0GuIZwuKgXDywBZ8KH4PPA1f/zwfTJG7ES', 'Jane', 'Smith', 'student', 'default-avatar.png', '019-2345678', '2000-12-03', 'STU002', NULL, NULL, 'Information Technology', '2025-06-16 06:26:40', '2025-06-16 17:34:12', 1, NULL),
-(9, 'ahmad_ibrahim', 'ahmad@student.fsktm.edu.my', '$2a$12$lB9OHQh8th5S/d.nvM.0GuIZwuKgXDywBZ8KH4PPA1f/zwfTJG7ES', 'Ahmad', 'Ibrahim', 'student', 'default-avatar.png', '019-3456789', '2001-08-22', 'STU003', NULL, NULL, 'Software Engineering', '2025-06-16 06:26:40', '2025-06-16 17:34:12', 1, NULL),
-(10, 'mei_ling', 'mei@student.fsktm.edu.my', '$2a$12$lB9OHQh8th5S/d.nvM.0GuIZwuKgXDywBZ8KH4PPA1f/zwfTJG7ES', 'Mei', 'Ling', 'student', 'default-avatar.png', '019-4567890', '2002-03-10', 'STU004', NULL, NULL, 'Artificial Intelligence', '2025-06-16 06:26:40', '2025-06-16 17:34:12', 1, NULL),
-(11, 'ali_omar', 'ali@student.fsktm.edu.my', '$2a$12$lB9OHQh8th5S/d.nvM.0GuIZwuKgXDywBZ8KH4PPA1f/zwfTJG7ES', 'Ali', 'Omar', 'student', 'default-avatar.png', '019-5678901', '2001-11-25', 'STU005', NULL, NULL, 'Network Security', '2025-06-16 06:26:40', '2025-06-16 17:34:12', 1, NULL),
-(12, 'sara_wong', 'sara@student.fsktm.edu.my', '$2a$12$lB9OHQh8th5S/d.nvM.0GuIZwuKgXDywBZ8KH4PPA1f/zwfTJG7ES', 'Sara', 'Wong', 'student', 'default-avatar.png', '019-6789012', '2000-07-18', 'STU006', NULL, NULL, 'Computer Science', '2025-06-16 06:26:40', '2025-06-16 17:34:12', 1, NULL),
-(13, 'david_lim', 'david@student.fsktm.edu.my', '$2a$12$lB9OHQh8th5S/d.nvM.0GuIZwuKgXDywBZ8KH4PPA1f/zwfTJG7ES', 'David', 'Lim', 'student', 'default-avatar.png', '019-7890123', '2001-09-30', 'STU007', NULL, NULL, 'Information Technology', '2025-06-16 06:26:40', '2025-06-16 17:34:12', 1, NULL),
-(14, 'nurul_huda', 'nurul@student.fsktm.edu.my', '$2a$12$lB9OHQh8th5S/d.nvM.0GuIZwuKgXDywBZ8KH4PPA1f/zwfTJG7ES', 'Nurul', 'Huda', 'student', 'default-avatar.png', '019-8901234', '2002-01-05', 'STU008', NULL, NULL, 'Software Engineering', '2025-06-16 06:26:40', '2025-06-16 17:34:12', 1, '0000-00-00 00:00:00'),
-(15, 'moses_yii', 'annsingyii@gmail.com', '$2y$10$kc7NEo8zvNjBv2GFAmsz..VmQb4td/XSHcG/skqDXOESYPn9V.u4a', 'Moses', 'Yii', 'student', 'default-avatar.png', NULL, NULL, NULL, NULL, NULL, NULL, '2025-06-17 16:40:21', '2025-06-17 16:40:21', 1, NULL);
+(1, 'admin', 'admin@fsktm.edu.my', '$2a$12$79SdsP1nbxQ5gbS2eptNW.Mb708OtSdiII3K9Vi2cLWdZHbD0tD0u', 'System', 'Administrator', 'admin', 'profile_1_1750089204.png', '0389212345', '0000-00-00', NULL, 'ADM001', '', 'Administration', '2025-06-16 06:26:40', '2025-06-28 08:46:48', 1, '2025-06-26 16:44:47'),
+(2, 'dr_ahmad', 'ahmad@fsktm.edu.my', '$2a$12$OH8SHQ6HktwoEyrLrv51iuHETcQg2zEytgdtBN7EgeLMcDSZr4HDy', 'Ahmad', 'Hassan', 'lecturer', 'profile_2_1750092346.png', '0168600321', NULL, NULL, 'LEC001', NULL, 'Information Technology', '2025-06-16 06:26:40', '2025-06-28 18:05:23', 1, '2025-06-26 16:41:38'),
+(3, 'dr_siti', 'siti@fsktm.edu.my', '$2a$12$OH8SHQ6HktwoEyrLrv51iuHETcQg2zEytgdtBN7EgeLMcDSZr4HDy', 'Siti', 'Nurhaliza', 'lecturer', 'default-avatar.png', '0389210002', NULL, NULL, 'LEC002', NULL, 'Information Technology', '2025-06-16 06:26:40', '2025-06-28 08:46:48', 1, '2025-06-26 08:12:59'),
+(4, 'prof_lee', 'lee@fsktm.edu.my', '$2a$12$OH8SHQ6HktwoEyrLrv51iuHETcQg2zEytgdtBN7EgeLMcDSZr4HDy', 'Lee', 'Wei Ming', 'lecturer', 'default-avatar.png', '0389210003', NULL, NULL, 'LEC003', NULL, 'Software Engineering', '2025-06-16 06:26:40', '2025-06-28 08:46:48', 1, NULL),
+(5, 'dr_rajesh', 'rajesh@fsktm.edu.my', '$2a$12$OH8SHQ6HktwoEyrLrv51iuHETcQg2zEytgdtBN7EgeLMcDSZr4HDy', 'Rajesh', 'Kumar', 'lecturer', 'default-avatar.png', '0389210004', NULL, NULL, 'LEC004', NULL, 'Software Engineering', '2025-06-16 06:26:40', '2025-06-28 08:56:59', 1, NULL),
+(6, 'dr_fatimah', 'fatimah@fsktm.edu.my', '$2a$12$OH8SHQ6HktwoEyrLrv51iuHETcQg2zEytgdtBN7EgeLMcDSZr4HDy', 'Fatimah', 'Ali', 'lecturer', 'default-avatar.png', '0389210005', NULL, NULL, 'LEC005', NULL, 'Network Security', '2025-06-16 06:26:40', '2025-06-28 18:41:35', 1, '2025-06-19 06:54:37'),
+(7, 'john_doe', 'john@student.fsktm.edu.my', '$2a$12$lB9OHQh8th5S/d.nvM.0GuIZwuKgXDywBZ8KH4PPA1f/zwfTJG7ES', 'John', 'Doe', 'student', 'profile_7_1750923892.png', '0191234567', '2001-05-15', 'STU001', NULL, '', 'Information Security', '2025-06-16 06:26:40', '2025-06-28 08:58:02', 1, '2025-06-26 07:44:22'),
+(8, 'jane_smith', 'jane@student.fsktm.edu.my', '$2a$12$lB9OHQh8th5S/d.nvM.0GuIZwuKgXDywBZ8KH4PPA1f/zwfTJG7ES', 'Jane', 'Smith', 'student', 'default-avatar.png', '0192345678', '2000-12-03', 'STU002', NULL, NULL, 'Information Technology', '2025-06-16 06:26:40', '2025-06-28 08:46:48', 0, NULL),
+(9, 'ahmad_ibrahim', 'ahmad@student.fsktm.edu.my', '$2a$12$lB9OHQh8th5S/d.nvM.0GuIZwuKgXDywBZ8KH4PPA1f/zwfTJG7ES', 'Ahmad', 'Ibrahim', 'student', 'default-avatar.png', '0325223211', NULL, 'STU003', NULL, '18, TAMAN RONA', 'Software Engineering', '2025-06-16 06:26:40', '2025-06-28 19:18:21', 1, NULL),
+(10, 'mei_ling', 'mei@student.fsktm.edu.my', '$2a$12$lB9OHQh8th5S/d.nvM.0GuIZwuKgXDywBZ8KH4PPA1f/zwfTJG7ES', 'Mei', 'Ling', 'student', 'default-avatar.png', '0194567890', '2002-03-10', 'STU004', NULL, NULL, 'Software Engineering', '2025-06-16 06:26:40', '2025-06-28 08:57:31', 1, NULL),
+(11, 'ali_omar', 'ali@student.fsktm.edu.my', '$2a$12$lB9OHQh8th5S/d.nvM.0GuIZwuKgXDywBZ8KH4PPA1f/zwfTJG7ES', 'Ali', 'Omar', 'student', 'default-avatar.png', '0195678901', '2001-11-25', 'STU005', NULL, NULL, 'Network Security', '2025-06-16 06:26:40', '2025-06-28 08:47:40', 1, NULL),
+(12, 'sara_wong', 'sara@student.fsktm.edu.my', '$2a$12$lB9OHQh8th5S/d.nvM.0GuIZwuKgXDywBZ8KH4PPA1f/zwfTJG7ES', 'Sara', 'Wong', 'student', 'default-avatar.png', '0196789012', '2000-07-18', 'STU006', NULL, NULL, 'Software Engineering', '2025-06-16 06:26:40', '2025-06-28 08:58:30', 1, NULL),
+(13, 'david_lim', 'david@student.fsktm.edu.my', '$2a$12$lB9OHQh8th5S/d.nvM.0GuIZwuKgXDywBZ8KH4PPA1f/zwfTJG7ES', 'David', 'Lim', 'student', 'default-avatar.png', '0197890123', '2001-09-30', 'STU007', NULL, NULL, 'Information Technology', '2025-06-16 06:26:40', '2025-06-28 08:47:56', 1, NULL),
+(14, 'nurul_huda', 'nurul@student.fsktm.edu.my', '$2a$12$lB9OHQh8th5S/d.nvM.0GuIZwuKgXDywBZ8KH4PPA1f/zwfTJG7ES', 'Nurul', 'Huda', 'student', 'default-avatar.png', '0198901234', '2002-01-05', 'STU008', NULL, NULL, 'Software Engineering', '2025-06-16 06:26:40', '2025-06-28 08:48:05', 1, '0000-00-00 00:00:00');
 
 --
 -- Indexes for dumped tables
@@ -430,7 +430,7 @@ ALTER TABLE `assignment_files`
 -- AUTO_INCREMENT for table `courses`
 --
 ALTER TABLE `courses`
-  MODIFY `course_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=11;
+  MODIFY `course_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=12;
 
 --
 -- AUTO_INCREMENT for table `course_categories`
@@ -448,7 +448,7 @@ ALTER TABLE `course_resources`
 -- AUTO_INCREMENT for table `registrations`
 --
 ALTER TABLE `registrations`
-  MODIFY `registration_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=23;
+  MODIFY `registration_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=25;
 
 --
 -- AUTO_INCREMENT for table `submissions`
@@ -460,7 +460,7 @@ ALTER TABLE `submissions`
 -- AUTO_INCREMENT for table `users`
 --
 ALTER TABLE `users`
-  MODIFY `user_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=16;
+  MODIFY `user_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=19;
 
 --
 -- Constraints for dumped tables
